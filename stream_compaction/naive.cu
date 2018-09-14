@@ -34,7 +34,7 @@ namespace StreamCompaction {
          */
         void scan(int n, int *odata, const int *idata) {
             dim3 fullBlockPerGrid((n + blockSize - 1) / blockSize);
-            int* dev_in, dev_out;
+            int* dev_in, *dev_out;
 
             cudaMalloc((void**) &dev_in, n * sizeof(int));
             checkCUDAError("cudaMalloc dev_in failed");

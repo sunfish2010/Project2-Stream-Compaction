@@ -13,7 +13,7 @@ namespace StreamCompaction {
 
         __global__ void kernUpSweep(int N, int *odata, int d){
             int index = threadIdx.x + (blockIdx.x * blockDim.x);
-            if (index < N && index < (1 << (d + 1))){
+            if (index < N && (index % (1 << (d + 1)) == 0) ){
                 odata[index + (1 << (d + 1)) - 1] += odata[index + (1 << d) - 1];
             }
         }
@@ -21,7 +21,7 @@ namespace StreamCompaction {
 
         __global__ void kernDownSweep(int N, int *odata, int d){
              int index = threadIdx.x + (blockIdx.x * blockDim.x);
-             if (index < N && index < (1 << (d + 1))) {
+             if (index < N && (index % (1 << (d + 1)) == 0) ) {
                 int tmp = odata[index + (1 << d) - 1];
                 odata[index + (1 << d) - 1]; = odata[index + (1 << (d + 1)) - 1];
                 odata[index + (1 << (d + 1)) - 1] += tmp;
@@ -29,12 +29,7 @@ namespace StreamCompaction {
 
         }
 
-        __global__ void kernZeroPad(int N, int n, int *odata){
-            int index = threadIdx.x + (blockIdx.x * blockDim.x);
-            if (index < N && index >= n){
-                odata[index] = 0;
-            }
-        }
+
         /**
          * Performs prefix-sum (aka scan) on idata, storing the result into odata.
          */
@@ -43,27 +38,31 @@ namespace StreamCompaction {
             int d = ilog2ceil(n);
             int N = 1 << d;
 
-            dim3 fullBlockPerGrid((N + blockSize - 1) / blockSize);
+            dim3 fullBlockPerGrid;
             int* dev_out;
 
-            dev_out = cudaMalloc((void**)&dev_out, sizeof(int) * N);
+            cudaMalloc((void**)&dev_out, sizeof(int) * N);
             checkCUDAError("cudaMalloc dev_out failed");
+
+            cudaMemset(dev_out, 0, sizeof(int));
+            checkCUDAError("cuda Memset failed");
 
             cudaMemcpy(dev_out, idata, sizeof(int) * n, cudaMemcpyHostToDevice);
             checkCUDAError("cudaMemcpyHostToDevice failed");
 
-            kernZeroPad<<<fullBlockPerGrid, blockSize>>> (N, n, dev_out);
-            checkCUDAError("kernZeroPad failed");
 
             timer().startGpuTimer();
             // without shared memory, the algorithm needs to be called for d times
             for (int i = 0; i < d; i++){
+                fullBlockPerGrid = (1 << (d - i - 1) + blockSize - 1) / blockSize;
                 kernUpSweep<<<fullBlockPerGrid, blockSize>>>(N, dev_out, i);
                 checkCUDAError("kernUpSweep failed");
             }
 
-            for (int i = 0; i < d; i++){
-                kernDownSweep<<<fullBlockPerGrid, blockSize>>>(N,dev_out, i);
+            cudaMemset(dev_out + N - 1, 0, sizeof(int));
+            for (int i = d - 1; i >= 0; i--){
+                fullBlockPerGrid = (1 << (d - i - 1) + blockSize - 1) / blockSize;
+                kernDownSweep<<<fullBlockPerGrid, blockSize>>>(N, dev_out, i);
                 checkCUDAError("kernDownpSweep failed");
             }
 
@@ -86,10 +85,50 @@ namespace StreamCompaction {
          */
         int compact(int n, int *odata, const int *idata) {
 
+            dim3 fullBlockPerGrid((n + blockSize - 1) / blockSize);
+            int* bools, *indices, *dev_in, *dev_out;
+            int num_element;
+
+            cudaMalloc((void**)&bools, sizeof(int) * n);
+            checkCUDAError("cudaMalloc bools failed");
+            cudaMalloc((void**)&indices, sizeof(int) * n);
+            checkCUDAError("cudaMalloc indices failed");
+            cudaMalloc((void**)&dev_out, sizeof(int) * n);
+            checkCUDAError("cudaMalloc dev_out failed");
+            cudaMalloc((void**)&dev_in, sizeof(int) * n);
+            checkCUDAError("cudaMalloc dev_in failed");
+
+            // lots of memcpy...
+
+            cudaMemcpy(dev_in, idata, sizeof(int) * n, cudaMemcpyHostToDevice);
+            checkCUDAError("cudaMemcpyHostToDevice failed");
+
             timer().startGpuTimer();
-            // TODO
+            StreamCompaction::Common:: kernMapToBoolean<<<fullBlockPerGrid, blockSize>>>(n, bools, dev_in);
+            checkCUDAError("kernMapToBoolean failed");
+
+            cudaMemcpy(odata, bools, sizeof(int) * n, cudaMemcpyDeviceToHost);
+            checkCUDAError("cudaMemcpyDeviceToHost failed");
+
+            scan(n, odata, odata);
+            num_element = odata[n - 1];
+
+            cudaMemcpy(indices, odata, sizeof(int) * n, cudaMemcpyHostToDevice);
+            checkCUDAError("cudaMemcpyHostToDevice failed");
+
+            StreamCompaction::Common::kernScatter(n, dev_out, dev_in, bools, indices);
+
             timer().endGpuTimer();
-            return -1;
+
+            cudaMemcpy(odata, dev_out, sizeof(int) * n, cudaMemcpyDeviceToHost);
+            checkCUDAError("cudaMemcpyDeviceToHost failed");
+
+            cudaFree(bools);
+            cudaFree(indices);
+            cudaFree(dev_in);
+            cudaFree(dev_out);
+
+            return num_element;
         }
     }
 }
