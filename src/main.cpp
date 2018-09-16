@@ -11,6 +11,8 @@
 #include <stream_compaction/naive.h>
 #include <stream_compaction/efficient.h>
 #include <stream_compaction/thrust.h>
+#include <stream_compaction/naive_sm.h>
+#include <stream_compaction/efficient_sm.h>
 #include "testing_helpers.hpp"
 
 const int SIZE = 1 << 8; // feel free to change the size of array
@@ -94,6 +96,17 @@ int main(int argc, char* argv[]) {
     printElapsedTime(StreamCompaction::Thrust::timer().getGpuElapsedTimeForPreviousOperation(), "(CUDA Measured)");
     //printArray(NPOT, c, true);
     printCmpResult(NPOT, b, c);
+
+    zeroArray(SIZE, c);
+    printDesc("naive scan with shared memory, power of two");
+    StreamCompaction::NaiveSM::scan(SIZE, c, a);
+    printElapsedTime(StreamCompaction::NaiveSM::timer().getGpuElapsedTimeForPreviousOperation(), "(CUDA Measured)");
+
+    zeroArray(SIZE, c);
+    printDesc("naive scan with shared memory, non-power-of-two");
+    StreamCompaction::NaiveSM::scan(NPOT, c, a);
+    printElapsedTime(StreamCompaction::NaiveSM::timer().getGpuElapsedTimeForPreviousOperation(), "(CUDA Measured)");
+
 
     printf("\n");
     printf("*****************************\n");
