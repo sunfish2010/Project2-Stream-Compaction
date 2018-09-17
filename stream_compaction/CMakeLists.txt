@@ -11,8 +11,6 @@ set(SOURCE_FILES
     "thrust.cu"
     "naive_sm.cu"
     "naive_sm.h"
-    "efficient_sm.cu"
-    "efficient.h"
     )
 
 cuda_add_library(stream_compaction

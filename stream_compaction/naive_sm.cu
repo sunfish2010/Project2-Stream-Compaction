@@ -24,10 +24,10 @@ namespace StreamCompaction {
                     pin = 1 - pin;
                     if (index >= offset) tmp[pout * N + index] += tmp[pin * N + index - offset];
                     else tmp[pout * N + index ]  = tmp[pin * N + index];
-                    __synthreads();
+                    __syncthreads();
                 }
             }
-            odata[index] = temp[pout * N + index];
+            odata[index] = tmp[pout * N + index];
         }
 
 //        // couldn't figure out a way to exclusive scan at once
