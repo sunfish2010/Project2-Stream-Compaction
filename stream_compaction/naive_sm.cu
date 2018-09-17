@@ -12,6 +12,7 @@ namespace StreamCompaction {
             return timer;
         }
 
+        // naive scan implemented with shared memory
 
         __global__ void kernNaiveScan(int N, int *odata, int *idata){
 			extern __shared__ int tmp[];
@@ -33,15 +34,6 @@ namespace StreamCompaction {
             odata[index] = tmp[pout * N + index];
         }
 
-//        // couldn't figure out a way to exclusive scan at once
-//        __global__ void kernInclusiveToExclusive(int N, int *odata, int idata){
-//            int index = threadIdx.x + (blockIdx.x * blockDim.x);
-//            if (index < N){
-//                if (index == 0) odata[index] = 0;
-//                else odata[index] = idata[index - 1];
-//            }
-//        }
-
         /**
          * Performs prefix-sum (aka scan) on idata, storing the result into odata.
          */
@@ -62,9 +54,6 @@ namespace StreamCompaction {
 
             kernNaiveScan <<< fullBlockPerGrid, blockSize, 2 * n * sizeof(int) >>> (n, dev_out, dev_in);
             checkCUDAError("kernNaiveScan dev_in failed");
-
-            // result now in dev_in
-//            kernInclusiveToExclusive<<<fullBlockPerGrid, blockSize>>> (n, dev_out, dev_in);
 
             timer().endGpuTimer();
 
