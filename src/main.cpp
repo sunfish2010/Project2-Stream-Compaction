@@ -14,8 +14,8 @@
 #include <stream_compaction/naive_sm.h>
 #include <stream_compaction/efficient_sm.h>
 #include "testing_helpers.hpp"
-
-const int SIZE = 1 << 3; // feel free to change the size of array
+// If you want to increase the size of array, make sure also increase BlockSize in algorithm implemented with shared memory
+const int SIZE = 1 << 7; 
 const int NPOT = SIZE - 3; // Non-Power-Of-Two
 int *a = new int[SIZE];
 int *b = new int[SIZE];
