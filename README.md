@@ -16,19 +16,19 @@ For example, given an array and some condition, we create an boolean array indic
 a result that stores the indices where the condition is met in the original array. 
 
 Below is a visualization of how scan and compaction works:
-![](images/stream_scan)
+![](img/stream_scan)
 
 
 For CPU implementation, scan is basically just an for loop iterating through all the elements and produce the outputs.
-![](images/cpu.png)
+![](img/cpu.png)
 
 For the naive GPU implementation, scan is done using two ping-pong buffers since the algorithm requires inplace updates of the array.
-![](images/naive.png)
-![](images/naive_al.png)
+![](img/naive.png)
+![](img/naive_al.png)
 
 For the efficient GPU implementation, scan is done smartly using up-sweep and down-sweep, which reduces the amount of computation significantly. 
-![](images/up.png)
-![](images/down.png)
+![](img/up.png)
+![](img/down.png)
 I tried to optimize the efficient algorithm by launching with different grid dimension that is best for each iteration, but in the end it's still slower than naive implementation when not using shared memory.
 
 For performance comparison, the built-in scan algorithm from thrust library is also used.
@@ -38,8 +38,8 @@ I also implement the algorithm with shared memory instead of calling for loops f
 
 ## Performance Analysis @ BlockSize = 128
 The performance of these three different algorithms with or w/o shared memory are shown in the diagram below.
-![](images/pw2.png)
-![](images/npt.png)
+![](img/pw2.png)
+![](img/npt.png)
 
 As can be seen from the diagram, when the array size is small, there is not much performance gain by using the GPU. Also, it is very interesting to note that
 the efficient scan algorithm is not actually performing better than the naive algorithm when not utilizing shared memory. 
