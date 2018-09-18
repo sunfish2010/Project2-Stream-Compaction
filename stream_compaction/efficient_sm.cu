@@ -34,7 +34,7 @@ namespace StreamCompaction {
                 offset >>= 1;
                 __syncthreads();
                 if (index < d){
-                    t = tmp[offset * (2 * index + 1) - 1];
+                    int t = tmp[offset * (2 * index + 1) - 1];
                     tmp[offset * (2 * index + 1) - 1] = tmp[offset * (2 * index + 2) - 1];
                     tmp[offset * (2 * index + 2) - 1] += t;
                 }

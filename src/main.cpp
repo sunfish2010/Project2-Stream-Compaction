@@ -111,6 +111,21 @@ int main(int argc, char* argv[]) {
     // printArray(NPOT, c, true);
     printCmpResult(NPOT, b, c);
 
+    zeroArray(SIZE, c);
+    printDesc("efficient scan with shared memory, power of two");
+    StreamCompaction::NaiveSM::scan(SIZE, c, a);
+    printElapsedTime(StreamCompaction::EfficientSM::timer().getGpuElapsedTimeForPreviousOperation(), "(CUDA Measured)");
+    // printArray(SIZE, c, true);
+    printCmpResult(SIZE, b, c);
+
+    zeroArray(SIZE, c);
+    printDesc("efficient scan with shared memory, non-power-of-two");
+    StreamCompaction::NaiveSM::scan(NPOT, c, a);
+    printElapsedTime(StreamCompaction::EfficientSM::timer().getGpuElapsedTimeForPreviousOperation(), "(CUDA Measured)");
+    // printArray(NPOT, c, true);
+    printCmpResult(NPOT, b, c);
+
+
     printf("\n");
     printf("*****************************\n");
     printf("** STREAM COMPACTION TESTS **\n");
