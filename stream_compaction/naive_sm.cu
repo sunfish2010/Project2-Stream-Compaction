@@ -12,21 +12,24 @@ namespace StreamCompaction {
             return timer;
         }
 
+
         __global__ void kernNaiveScan(int N, int *odata, int *idata){
-            extern __shared__ int tmp[];
-            int pout = 0, pin = 1;
-            int index = threadIdx.x + (blockIdx.x * blockDim.x);
-            if (index < N){
-                tmp[index] = index > 0 ? idata[index - 1]: 0;
+			extern __shared__ int tmp[];
+			int pout = 0;
+			int pin = 1;
+            int index = threadIdx.x;
+			if (index >= N) return;
+            tmp[index] = index > 0 ? idata[index - 1]: 0;
+            __syncthreads();
+            for (int offset = 1; offset < N; offset *= 2){
+                pout = 1 - pout;
+                pin = 1 - pin;
+                // the suedo code on gems 3 contains error
+                if (index >= offset) tmp[pout * N + index] = tmp[pin * N + index - offset] + tmp[pin * N + index];
+                else tmp[pout * N + index ]  = tmp[pin * N + index];
                 __syncthreads();
-                for (int offset = 1; offset < N; offset *= 2){
-                    pout = 1 - pout;
-                    pin = 1 - pin;
-                    if (index >= offset) tmp[pout * N + index] += tmp[pin * N + index - offset];
-                    else tmp[pout * N + index ]  = tmp[pin * N + index];
-                    __syncthreads();
-                }
             }
+        
             odata[index] = tmp[pout * N + index];
         }
 
@@ -57,7 +60,7 @@ namespace StreamCompaction {
 
             timer().startGpuTimer();
 
-            kernNaiveScan <<< fullBlockPerGrid, blockSize >>> (n, dev_out, dev_in);
+            kernNaiveScan <<< fullBlockPerGrid, blockSize, 2 * n * sizeof(int) >>> (n, dev_out, dev_in);
             checkCUDAError("kernNaiveScan dev_in failed");
 
             // result now in dev_in
