@@ -45,7 +45,7 @@ As can be seen from the diagram, when the array size is small, there is not much
 the efficient scan algorithm is not actually performing better than the naive algorithm when not utilizing shared memory. 
 
 My reasoning behind the first phenomenon is that essentially when the array size if small, we do not gain many parallelsim by using the algorithm. The memory read from global 
-memory is so heavy and we don't have enough parallelsim to hide this fact. However, as one could see, when the array size grows, the memory latency is hidden by the parallel computation. 
+memory is so heavy and we don't have enough parallelsim to hide this fact. It is not very obvious from my plot but from reasoning and looking at the performance from efficient shared memory, I would predict that as size of the array grows, the memory latency will hidden by the parallel computation so the GPU implementation will be faster. 
 
 The second phenomenon shows that if not carefully designed, a smarter algorithm could actually perform less well. There are a lot of branches and idling threads in the algorithm that the block computation power is not fully used at all! Even if I tried to eliminate the idling threads by changing the grid dimension it's still slower than the naive algorithm. Changing the algorithm by using stride can resolve this issue since the threads will be accessing consecutive memory addresses. But I don't have enough time to implement them.
 
